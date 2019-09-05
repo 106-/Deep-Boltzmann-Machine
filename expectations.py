@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import numpy as np
+from DBM import DBM_params
 
 def sigmoid(x):
     return 1/(1+np.exp(-x))
@@ -32,7 +33,7 @@ class data_expectations:
                 expectations[e] = np.dot(data.T, means[e]) / data_length
             else:
                 expectations[e] = np.dot(means[e-1].T, means[e]) / data_length
-        return expectations
+        return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires huge memory !!!
     @staticmethod
@@ -75,6 +76,7 @@ class model_expectations:
             values = [np.tile(i, (sample_num, 1)) for i in initial_vectors]
         else:
             values = initial_values
+            update_time = 1
 
         for i in range(update_time):
 
@@ -91,7 +93,7 @@ class model_expectations:
         expectations = [None for i in range(len(dbm.weights))]
         for e,_ in enumerate(expectations):
             expectations[e] = np.dot(values[e].T, values[e+1]) / sample_num
-        return expectations, values
+        return DBM_params(dbm.layers, initial_params=(expectations)), values
 
     # !!! this function takes exponential running time and requires HUGE memory !!!
     @staticmethod

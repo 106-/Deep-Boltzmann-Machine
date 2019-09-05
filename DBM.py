@@ -1,13 +1,11 @@
-#!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
 import numpy as np
-from expectations import data_expectations as de
-from expectations import model_expectations as me
+from mltools import Parameter
 
 from numpy.lib.stride_tricks import as_strided
 
-class DBM_params:
+class DBM_params(Parameter):
     def __init__(self, layers, initial_params=None):
         self.layers = np.array(layers)
         # [1, 2, 3, 4] -> [[1, 2], [2, 3], [3, 4]]
@@ -19,19 +17,24 @@ class DBM_params:
                 # xavier's initialization
                 uniform_range = np.sqrt(6/(i+j))
                 self.weights.append(np.random.uniform(-uniform_range, uniform_range, (i, j)))
+        elif isinstance(initial_params, dict):
+            self.weights = [initial_params[i] for i in sorted(initial_params)]
+        elif isinstance(initial_params, list):
+            self.weights = initial_params
         else:
-            self.weights = initial_params["weights"]
+            raise TypeError("initial_params is unknown type: %s"%type(initial_params))
 
+        digit = len(str(len(self.layers)))
         params = {}
         for i,w in enumerate(self.weights):
-            params["weight%d"%i] = w
+            params["weight%s"%str(i).zfill(digit)] = w
         
         super().__init__(params)
     
     def zeros(self):
         zero_params = {}
         for i in self.params:
-            zero_params[i] = np.zeros(self.[i].shape)
+            zero_params[i] = np.zeros(self[i].shape)
         return DBM_params(self.layers, initial_params=zero_params)
 
 class DBM:
@@ -41,30 +44,17 @@ class DBM:
         self.weights = self.params.weights
         self.layers_matrix_sizes = self.params.layers_matrix_sizes
 
-    def data_expectation(self, data, method=de.mean_field, **kwargs):
-        return method(self, data, **kwargs)
+        from expectations import data_expectations as de
+        from expectations import model_expectations as me
+        # そのうち引数で変えられるようにすべき
+        self.data_expectation = de.mean_field
+        self.model_expectation = me.montecarlo
 
-    def model_expectation(self, method=me.montecarlo, **kwargs):
-        return method(self, **kwargs)
-
-    def train(self, train_time):
+    def train(self, data, train_time, optimizer, minibatch_size=100):
         old_samples = None
         for i in range(train_time):
-            pass
+            data_exp = self.data_expectation(self, data.minibatch(minibatch_size))
+            model_exp, old_samples = self.model_expectation(self, initial_values=old_samples)
+            diff = optimizer.update( data_exp - model_exp )
+            self.params = self.params + diff
 
-def main():
-    import time
-    dbm = DBM([5, 5, 5])
-    data = np.random.choice([-1, +1], (100, 5))
-    a = dbm.data_expectation(data, method=de.mean_field)
-    b = dbm.data_expectation(data, method=de.exact)
-    # a,_ = dbm.model_expectation(method=me.montecarlo)
-    # b = dbm.model_expectation(method=me.exact)
-    for i in range(len(dbm.weights)):
-        print("="*20)
-        print(a[i])
-        print(b[i])
-        print("="*20)
-
-if __name__=="__main__":
-    main()
