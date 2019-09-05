@@ -56,5 +56,5 @@ class DBM:
             data_exp = self.data_expectation(self, data.minibatch(minibatch_size))
             model_exp, old_samples = self.model_expectation(self, initial_values=old_samples)
             diff = optimizer.update( data_exp - model_exp )
-            self.params = self.params + diff
+            self.params += diff
 
