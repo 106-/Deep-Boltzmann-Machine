@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import numpy as np
+import logging
 from mltools import Parameter
 
 from numpy.lib.stride_tricks import as_strided
@@ -56,4 +57,5 @@ class DBM:
             model_exp = self.model_expectation(self)
             diff = optimizer.update( data_exp - model_exp )
             self.params += diff
+            logging.info("learning time: %d"%i)
 

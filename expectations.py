@@ -92,6 +92,7 @@ class model_expectations:
             act_prob = act( np.dot( values[-2], dbm.weights[-1] ) )
             values[-1] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[-1]), 1, -1)
 
+        cls.old_samples = values
         expectations = [None for i in range(len(dbm.weights))]
         for e,_ in enumerate(expectations):
             expectations[e] = np.dot(values[e].T, values[e+1]) / sample_num

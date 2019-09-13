@@ -2,9 +2,13 @@
 # -*- coding:utf-8 -*-
 
 import numpy as np
+import logging
 from mltools.data import Data
 from mltools.optimizer import SGD
 from DBM import DBM
+
+logging.basicConfig(format='%(asctime)s : [%(levelname)s] %(message)s', level=logging.DEBUG)
+np.seterr(over="raise", invalid="raise")
 
 def main():
     dbm = DBM([5, 5, 5])
