@@ -51,10 +51,9 @@ class DBM:
         self.model_expectation = me.montecarlo
 
     def train(self, data, train_time, optimizer, minibatch_size=100):
-        old_samples = None
         for i in range(train_time):
             data_exp = self.data_expectation(self, data.minibatch(minibatch_size))
-            model_exp, old_samples = self.model_expectation(self, initial_values=old_samples)
+            model_exp = self.model_expectation(self)
             diff = optimizer.update( data_exp - model_exp )
             self.params += diff
 

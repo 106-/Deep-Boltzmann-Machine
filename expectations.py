@@ -16,8 +16,8 @@ def get_bits(num_bits):
     return np.where(bit_bools, 1, -1)
 
 class data_expectations:
-    @staticmethod
-    def mean_field(dbm, data, approximition_time=1000):
+    @classmethod
+    def mean_field(cls, dbm, data, approximition_time=1000):
         data_length = len(data)
         means = [np.random.randn(data.shape[0],r) for r in dbm.layers[1:]]
         expectations = [None for i in range(len(dbm.weights))]
@@ -36,8 +36,8 @@ class data_expectations:
         return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires huge memory !!!
-    @staticmethod
-    def exact(dbm, data):
+    @classmethod
+    def exact(cls, dbm, data):
         if len(dbm.layers) != 3:
             raise TypeError("exact method only supports 3-layer DBM.")
 
@@ -66,16 +66,18 @@ class data_expectations:
         for e,_ in enumerate(expectations):
             expectations[e] /= len(data)
 
-        return expectations
+        return DBM_params(dbm.layers, initial_params=(expectations))
 
 class model_expectations:
-    @staticmethod
-    def montecarlo(dbm, update_time=1000, sample_num=1000, initial_values=None):
-        if initial_values is None:
+    old_samples = None
+
+    @classmethod
+    def montecarlo(cls, dbm, update_time=1000, sample_num=1000):
+        if cls.old_samples is None:
             initial_vectors = [np.random.choice([-1, 1], i) for i in dbm.layers]
             values = [np.tile(i, (sample_num, 1)) for i in initial_vectors]
         else:
-            values = initial_values
+            values = cls.old_samples
             update_time = 1
 
         for i in range(update_time):
@@ -93,11 +95,11 @@ class model_expectations:
         expectations = [None for i in range(len(dbm.weights))]
         for e,_ in enumerate(expectations):
             expectations[e] = np.dot(values[e].T, values[e+1]) / sample_num
-        return DBM_params(dbm.layers, initial_params=(expectations)), values
+        return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires HUGE memory !!!
-    @staticmethod
-    def exact(dbm):
+    @classmethod
+    def exact(cls, dbm):
         if len(dbm.layers) != 3:
             raise TypeError("exact method only supports 3-layer DBM.")
         
@@ -121,4 +123,4 @@ class model_expectations:
                     np.add(expectations[0], np.outer(lbits[0][v], lbits[1][h1]) * probability[v][h1][h2], out=expectations[0])
                     np.add(expectations[1], np.outer(lbits[1][h1], lbits[2][h2]) * probability[v][h1][h2], out=expectations[1])
 
-        return expectations
+        return DBM_params(dbm.layers, initial_params=(expectations))
