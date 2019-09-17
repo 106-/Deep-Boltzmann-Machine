@@ -3,6 +3,7 @@
 import numpy as np
 import logging
 from mltools import Parameter
+from marginal_functions import get_bits
 
 from numpy.lib.stride_tricks import as_strided
 
@@ -42,7 +43,6 @@ class DBM:
     def __init__(self, layers, initial_params=None):
         self.params = DBM_params(layers, initial_params)
         self.layers = self.params.layers
-        self.weights = self.params.weights
         self.layers_matrix_sizes = self.params.layers_matrix_sizes
 
         from expectations import data_expectations as de
@@ -51,6 +51,9 @@ class DBM:
         self.data_expectation = de.mean_field
         self.model_expectation = me.montecarlo
 
+        self._probs = None
+        self._old_probs_id = None
+
     def train(self, data, train_time, optimizer, minibatch_size=100):
         for i in range(train_time):
             data_exp = self.data_expectation(self, data.minibatch(minibatch_size))
@@ -58,4 +61,36 @@ class DBM:
             diff = optimizer.update( data_exp - model_exp )
             self.params += diff
             logging.info("learning time: %d"%i)
+    
+    # !!! exponential runnning time !!!
+    # returns all patterns of P(v, h1, h2, h3)
+    def probability(self):
+        if len(self.layers) != 3:
+            raise TypeError("exact method only supports 3-layer DBM.")
 
+        if id(self.params.weights) == self._old_probs_id:
+            logging.debug("probability calculation skipped.")
+            return self._probs
+        
+        energies = [None for i in range(len(self.params.weights))]
+        bits = get_bits(np.max(self.layers))
+
+        for i in range(len(self.layers)-1):
+            upper = self.layers[i+1]
+            lower = self.layers[i]
+            energies[i] = np.dot( np.dot(bits[0:2**lower, 0:lower], self.params.weights[i]), bits[0:2**upper, 0:upper].T )
+        
+        energy = energies[0][:, :, np.newaxis] + energies[1][np.newaxis, :, :]
+        energy_exp = np.exp(energy - np.max(energy))
+        probability = energy_exp / np.sum(energy_exp)
+        
+        self._probs = probability
+        self._old_probs_id = id(self.params.weights)
+
+        return probability
+    
+    # !!! exponential runnning time !!!
+    def kl_divergence(self, gen_dbm):
+        probs = np.sum(self.probability(), axis=(1,2))
+        gen_probs = np.sum(gen_dbm.probability(), axis=(1,2))
+        return np.sum( gen_probs * np.log( gen_probs / probs ) )
