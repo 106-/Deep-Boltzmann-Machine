@@ -1,0 +1,5 @@
+{
+    "initial_model": "./params/initial_555.json",
+    "generative_model": "./params/gen_555.json",
+    "learning_data": "./datas/gen_555.npy"
+}
