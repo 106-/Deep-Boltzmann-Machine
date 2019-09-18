@@ -104,7 +104,7 @@ class DBM:
             "layers": self.layers.tolist(),
             "params": params_listed
         }
-        json.dump(data, open(filename, "w+"))
+        json.dump(data, open(filename, "w+"), indent=2)
     
     @staticmethod
     def load(filename):
