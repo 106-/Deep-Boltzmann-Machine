@@ -2,6 +2,7 @@
 
 import numpy as np
 import logging
+import json
 from mltools import Parameter
 from marginal_functions import get_bits
 
@@ -63,7 +64,7 @@ class DBM:
             logging.info("learning time: %d"%i)
     
     # !!! exponential runnning time !!!
-    # returns all patterns of P(v, h1, h2, h3)
+    # returns *all* patterns of P(v, h1, h2)
     def probability(self):
         if len(self.layers) != 3:
             raise TypeError("exact method only supports 3-layer DBM.")
@@ -94,3 +95,20 @@ class DBM:
         probs = np.sum(self.probability(), axis=(1,2))
         gen_probs = np.sum(gen_dbm.probability(), axis=(1,2))
         return np.sum( gen_probs * np.log( gen_probs / probs ) )
+    
+    def save(self, filename):
+        params_listed = {}
+        for w in self.params.params:
+            params_listed[w] = self.params.params[w].tolist()
+        data = {
+            "layers": self.layers.tolist(),
+            "params": params_listed
+        }
+        json.dump(data, open(filename, "w+"))
+    
+    @staticmethod
+    def load(filename):
+        data = json.load(open(filename, "r"))
+        for w in data["params"]:
+            data["params"][w] = np.array(data["params"][w])
+        return DBM(data["layers"], initial_params=data["params"])
