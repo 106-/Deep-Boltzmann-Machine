@@ -12,7 +12,7 @@ from mltools.data import Data
 from mltools import LearningLog
 from DBM import DBM
 
-parser = argparse.ArgumentParser("DRBM sampling script", add_help=False)
+parser = argparse.ArgumentParser("DBM learning script.", add_help=False)
 parser.add_argument("learning_config", action="store", type=str, help="path of learning configuration file.")
 parser.add_argument("learning_epoch", action="store", type=int, help="numbers of epochs.")
 parser.add_argument("-l", "--log_level", action="store", type=str, default="INFO", help="learning log output level.")
