@@ -2,7 +2,7 @@ Deep-Boltzmann-Machine
 ===
 (実験用)ディープボルツマンマシンの実装.
 
-生成DBMからサンプリングしたデータを学習し, 2つのモデル間のカルバックライブラー情報量(Kullback-Leibler Divergence; KLD)を計算できます.
+生成DBMからサンプリングしたデータを学習し, 2つのモデル間のカルバックライブラー情報量(Kullback-Leibler Divergence; KLD)を計算できます. 学習は近似学習のみ行い, 事前学習はやっていません(後に追加するかも)
 
 ## 使い方
 _Python3.xが必要です._
@@ -38,3 +38,6 @@ $ ./train_main.py ./config/555.json 5
 2019-09-19 18:28:53,804 : [INFO] Model parameters was dumped to: ./results/2019-09-19_18-28-53_model.json
 2019-09-19 18:28:53,805 : [INFO] Learning log was dumped to: ./results/2019-09-19_18-28-53_log.json
 ```
+
+## 参考文献
+R. Salakhutdinov and G. Hinton: [Deep Boltzmann Machines](http://proceedings.mlr.press/v5/salakhutdinov09a/salakhutdinov09a.pdf), Artificial intelligence and statistics, pp.448-455, 2009.
