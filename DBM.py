@@ -4,6 +4,7 @@ import numpy as np
 import logging
 import json
 from mltools import Parameter
+from mltools import EpochCalc
 from marginal_functions import get_bits
 
 from numpy.lib.stride_tricks import as_strided
@@ -52,16 +53,24 @@ class DBM:
         self.data_expectation = de.mean_field
         self.model_expectation = me.montecarlo
 
-        self._probs = None
-        self._old_probs_id = None
+    def train(self, data, train_epoch, gen_dbm, learning_result, optimizer, minibatch_size=100, test_interval=1.0):
+        ec = EpochCalc(train_epoch, len(data), minibatch_size)
 
-    def train(self, data, train_time, optimizer, minibatch_size=100):
-        for i in range(train_time):
+        def per_epoch(update_time):
+            logging.debug("Calculating Kullback-Leibler Divergence.")
+            kld = self.kl_divergence(gen_dbm)
+            learning_result.make_log(ec.update_to_epoch(update_time, force_integer=False), "kl-divergence", [kld])
+            logging.info("[ {} / {} ]( {} / {} ) KL-Divergence: {}".format(ec.update_to_epoch(update_time, force_integer=False), ec.train_epoch, update_time, ec.train_update , kld))
+
+        per_epoch(0)
+        for i in range(1, ec.train_update+1):
+            logging.debug("training process : [ %d / %d ]" % (i, ec.train_update))
             data_exp = self.data_expectation(self, data.minibatch(minibatch_size))
             model_exp = self.model_expectation(self)
             diff = optimizer.update( data_exp - model_exp )
             self.params += diff
-            logging.info("learning time: %d"%i)
+            if i % ec.epoch_to_update(test_interval) == 0:
+                per_epoch(i)
     
     # !!! exponential runnning time !!!
     # returns *all* patterns of P(v, h1, h2)
@@ -69,10 +78,6 @@ class DBM:
         if len(self.layers) != 3:
             raise TypeError("exact method only supports 3-layer DBM.")
 
-        if id(self.params.weights) == self._old_probs_id:
-            logging.debug("probability calculation skipped.")
-            return self._probs
-        
         energies = [None for i in range(len(self.params.weights))]
         bits = get_bits(np.max(self.layers))
 
@@ -85,9 +90,6 @@ class DBM:
         energy_exp = np.exp(energy - np.max(energy))
         probability = energy_exp / np.sum(energy_exp)
         
-        self._probs = probability
-        self._old_probs_id = id(self.params.weights)
-
         return probability
     
     # !!! exponential runnning time !!!
