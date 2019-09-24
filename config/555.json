@@ -1,5 +1,7 @@
 {
     "initial_model": "./params/initial_555.json",
     "generative_model": "./params/gen_555.json",
-    "learning_data": "./datas/gen_555.npy"
+    "learning_data": "./datas/gen_555.npy",
+    "data_expectation": "mean_field",
+    "model_expectation": "motecarlo"
 }

@@ -42,16 +42,15 @@ class DBM_params(Parameter):
         return DBM_params(self.layers, initial_params=zero_params)
 
 class DBM:
-    def __init__(self, layers, initial_params=None):
+    def __init__(self, layers, data_expectation="mean_field", model_expectation="montecarlo", initial_params=None):
         self.params = DBM_params(layers, initial_params)
         self.layers = self.params.layers
         self.layers_matrix_sizes = self.params.layers_matrix_sizes
 
         from expectations import data_expectations as de
         from expectations import model_expectations as me
-        # そのうち引数で変えられるようにすべき
-        self.data_expectation = de.mean_field
-        self.model_expectation = me.montecarlo
+        self.data_expectation = getattr(de, data_expectation)
+        self.model_expectation = getattr(me, model_expectation)
 
     def train(self, data, train_epoch, gen_dbm, learning_result, optimizer, minibatch_size=100, test_interval=1.0):
         ec = EpochCalc(train_epoch, len(data), minibatch_size)
