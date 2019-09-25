@@ -5,10 +5,15 @@ from DBM import DBM_params
 from marginal_functions import sigmoid, act, get_bits
 
 class data_expectations:
+    old_means = None
+
     @classmethod
-    def mean_field(cls, dbm, data, approximition_time=1000):
+    def mean_field(cls, dbm, data, approximition_time=100):
         data_length = len(data)
-        means = [np.random.randn(data.shape[0],r) for r in dbm.layers[1:]]
+        if cls.old_means is None:
+            means = [np.random.randn(data.shape[0],r) for r in dbm.layers[1:]]
+        else:
+            means = cls.old_means
         expectations = [None for i in range(len(dbm.params.weights))]
         for t in range(approximition_time):
             # (N, i)(i, j) + (N, k)(j, k)^T
@@ -16,6 +21,7 @@ class data_expectations:
             for i in range(1, len(dbm.layers)-2):
                 means[i] = np.tanh( np.dot(means[i-1], dbm.params.weights[i] ) + np.dot(means[i+1], dbm.params.weights[i+1].T) )
             means[-1] = np.tanh( np.dot(means[-2], dbm.params.weights[-1]) )
+        cls.old_means = means
 
         for e in range(len(expectations)):
             if e==0:
