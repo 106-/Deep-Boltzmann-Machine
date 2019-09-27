@@ -21,6 +21,7 @@ parser.add_argument("-m", "--minibatch_size", action="store", type=int, default=
 parser.add_argument("-t", "--test_interval", action="store", type=float, default=1.0, help="test interval(epoch).")
 parser.add_argument("-d", "--output_directory", action="store", type=str, default="./results/", help="directory to output parameter & log")
 parser.add_argument("-s", "--filename_suffix", action="store", type=str, default=None, help="filename suffix")
+parser.add_argument("-L", "--data_limit", action="store", type=int, default=None, help="limit the number of training data.")
 args = parser.parse_args()
 
 logging.basicConfig(format='%(asctime)s : [%(levelname)s] %(message)s', level=getattr(logging, args.log_level))
@@ -36,6 +37,8 @@ def main():
 
     logging.debug("Loading learning data.")
     learning_data = Data(np.load(config["learning_data"]))
+    if args.data_limit is not None:
+        learning_data = Data(learning_data.data[:args.data_limit])
 
     logging.info("Optimizer: %s" % args.optimizer)
     optimizer = getattr(mltools.optimizer, args.optimizer)()
