@@ -16,12 +16,8 @@ parser = argparse.ArgumentParser("DBM learning script.", add_help=False)
 parser.add_argument("learning_config", action="store", type=str, help="path of learning configuration file.")
 parser.add_argument("learning_epoch", action="store", type=int, help="numbers of epochs.")
 parser.add_argument("-l", "--log_level", action="store", type=str, default="INFO", help="learning log output level.")
-parser.add_argument("-o", "--optimizer", action="store", type=str, default="Adamax", help="parameter update method.")
-parser.add_argument("-m", "--minibatch_size", action="store", type=int, default=100, help="minibatch size.")
-parser.add_argument("-t", "--test_interval", action="store", type=float, default=1.0, help="test interval(epoch).")
 parser.add_argument("-d", "--output_directory", action="store", type=str, default="./results/", help="directory to output parameter & log")
 parser.add_argument("-s", "--filename_suffix", action="store", type=str, default=None, help="filename suffix")
-parser.add_argument("-L", "--data_limit", action="store", type=int, default=None, help="limit the number of training data.")
 args = parser.parse_args()
 
 logging.basicConfig(format='%(asctime)s : [%(levelname)s] %(message)s', level=getattr(logging, args.log_level))
@@ -37,25 +33,22 @@ def main():
 
     logging.debug("Loading learning data.")
     learning_data = Data(np.load(config["learning_data"]))
-    if args.data_limit is not None:
-        learning_data = Data(learning_data.data[:args.data_limit])
+    if "data_limit" in config:
+        learning_data = Data(learning_data.data[:config["data_limit"]])
 
-    logging.info("Optimizer: %s" % args.optimizer)
-    optimizer = getattr(mltools.optimizer, args.optimizer)()
+    logging.info("Optimizer: %s" % config["optimizer"])
+    optimizer = getattr(mltools.optimizer, config["optimizer"])(**config["optimizer_args"])
 
     setting_log = {
         "learning_epoch": args.learning_epoch,
         "learning_configfile": args.learning_config,
-        "test_interval": args.test_interval,
-        "minibatch_size": args.minibatch_size,
         "traindata_size": len(learning_data),
-        "optimizer": args.optimizer,
     }
     setting_log.update(config)
     learning_log = LearningLog(setting_log)
 
     logging.info("Train started.")
-    dbm.train(learning_data, args.learning_epoch, gen_dbm, learning_log, optimizer, minibatch_size=args.minibatch_size, test_interval=args.test_interval)
+    dbm.train(learning_data, args.learning_epoch, gen_dbm, learning_log, optimizer, minibatch_size=config["minibatch_size"], test_interval=config["test_interval"])
     logging.info("Train ended.")
 
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
