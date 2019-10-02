@@ -28,7 +28,7 @@ def main():
     config = json.load(open(args.learning_config, "r"))
 
     logging.debug("Loading Initial/Generative models.")
-    dbm = DBM.load(config["initial_model"])
+    dbm = DBM.load(config["initial_model"], config["data_expectation"], config["model_expectation"])
     gen_dbm = DBM.load(config["generative_model"])
 
     logging.debug("Loading learning data.")

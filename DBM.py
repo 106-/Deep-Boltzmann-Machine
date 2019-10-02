@@ -108,8 +108,8 @@ class DBM:
         json.dump(data, open(filename, "w+"), indent=2)
     
     @staticmethod
-    def load(filename):
+    def load(filename, data_expectation="mean_field", model_expectation="montecarlo"):
         data = json.load(open(filename, "r"))
         for w in data["params"]:
             data["params"][w] = np.array(data["params"][w])
-        return DBM(data["layers"], initial_params=data["params"])
+        return DBM(data["layers"], data_expectation, model_expectation, initial_params=data["params"])
