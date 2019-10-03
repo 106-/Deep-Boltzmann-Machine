@@ -6,6 +6,32 @@ from marginal_functions import sigmoid, act, get_bits
 
 class data_expectations:
     old_means = None
+    old_samples = None
+
+    @classmethod
+    def _sampling(cls, dbm, data, update_time):
+        sample_num = len(data)
+        if cls.old_samples is None:
+            initial_vectors = [np.random.choice([-1, 1], i) for i in dbm.layers[1:]]
+            values = [np.tile(i, (sample_num, 1)) for i in initial_vectors]
+        else:
+            values = cls.old_samples
+            update_time = 1
+
+        for i in range(update_time):
+
+            act_prob = act( np.dot(data, dbm.params.weights[0]) + np.dot(dbm.params.weights[1], values[1].T).T )
+            values[0] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[1]), 1, -1)
+
+            for l in range(1, len(dbm.layers)-2):
+                act_prob = act( np.dot( values[l-1], dbm.params.weights[l] ) + np.dot(dbm.params.weights[l+1], values[l+1].T).T )
+                values[l] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[l+1]), 1, -1)
+
+            act_prob = act( np.dot( values[-2], dbm.params.weights[-1] ) )
+            values[-1] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[-1]), 1, -1)
+
+        cls.old_samples = values
+        return values
 
     @classmethod
     def mean_field(cls, dbm, data, approximition_time=100):
@@ -28,6 +54,24 @@ class data_expectations:
                 expectations[e] = np.dot(data.T, means[e]) / data_length
             else:
                 expectations[e] = np.dot(means[e-1].T, means[e]) / data_length
+        return DBM_params(dbm.layers, initial_params=(expectations))
+
+    @classmethod
+    def smci(cls, dbm, data):
+        values = cls._sampling(dbm, data, update_time=1000)
+        
+        means = [None for r in dbm.layers[1:]]
+        means[0] = np.tanh( np.dot(data, dbm.params.weights[0]) + np.dot(values[1], dbm.params.weights[1].T) )
+        for i in range(1, len(dbm.layers)-2):
+            means[i] = np.tanh( np.dot(values[i-1], dbm.params.weights[i-1] ) + np.dot(values[i+1], dbm.params.weights[i+1].T) )
+        means[-1] = np.tanh( np.dot(values[-2], dbm.params.weights[-1]) )
+
+        expectations = [None for i in dbm.params.weights]
+        for e,_ in enumerate(expectations):
+            if e==0:
+                expectations[e] = np.dot(data.T, means[e]) / len(data)
+            else:
+                expectations[e] = np.dot(means[e-1].T, means[e]) / len(data)
         return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires huge memory !!!
@@ -67,7 +111,7 @@ class model_expectations:
     old_samples = None
 
     @classmethod
-    def montecarlo(cls, dbm, update_time=1000, sample_num=1000):
+    def _sampling(cls, dbm, update_time, sample_num):
         if cls.old_samples is None:
             initial_vectors = [np.random.choice([-1, 1], i) for i in dbm.layers]
             values = [np.tile(i, (sample_num, 1)) for i in initial_vectors]
@@ -88,9 +132,29 @@ class model_expectations:
             values[-1] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[-1]), 1, -1)
 
         cls.old_samples = values
+        return values
+
+    @classmethod
+    def montecarlo(cls, dbm, update_time=1000, sample_num=1000):
+        values = cls._sampling(dbm, update_time, sample_num)
         expectations = [None for i in range(len(dbm.params.weights))]
         for e,_ in enumerate(expectations):
             expectations[e] = np.dot(values[e].T, values[e+1]) / sample_num
+        return DBM_params(dbm.layers, initial_params=(expectations))
+    
+    @classmethod
+    def smci(cls, dbm, update_time=1000, sample_num=1000):
+        values = cls._sampling(dbm, update_time, sample_num)
+        
+        means = [None for r in dbm.layers]
+        means[0] = np.tanh( np.dot(values[1], dbm.params.weights[0].T) )
+        for i in range(1, len(dbm.layers)-1):
+            means[i] = np.tanh( np.dot(values[i-1], dbm.params.weights[i-1] ) + np.dot(values[i+1], dbm.params.weights[i].T) )
+        means[-1] = np.tanh( np.dot(values[-2], dbm.params.weights[-1]) )
+
+        expectations = [None for i in dbm.params.weights]
+        for e,_ in enumerate(expectations):
+            expectations[e] = np.dot(means[e].T, means[e+1]) / sample_num
         return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires HUGE memory !!!
