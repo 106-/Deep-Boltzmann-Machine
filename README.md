@@ -41,4 +41,5 @@ $ ./train_main.py ./config/555.json 5
 
 ## 参考文献
 R. Salakhutdinov and G. Hinton: [Deep Boltzmann Machines](http://proceedings.mlr.press/v5/salakhutdinov09a/salakhutdinov09a.pdf), Artificial intelligence and statistics, pp.448-455, 2009.
+
 M. Yasuda: [Learning Algorithm of Boltzmann Machine Based on Spatial Monte Carlo Integration Method](https://www.mdpi.com/1999-4893/11/4/42/htm),  Algorithms 11(4), 2018.
