@@ -81,18 +81,9 @@ class data_expectations:
             raise TypeError("exact method only supports 3-layer DBM.")
 
         expectations = [np.zeros((i,j)) for i,j in dbm.layers_matrix_sizes]
-        energies = [None for i in range(len(dbm.params.weights))]
         bits = get_bits(np.max(dbm.layers))
 
-        energies[0] = np.dot( np.dot(data, dbm.params.weights[0]), bits[0:2**dbm.layers[1], 0:dbm.layers[1]].T )
-        for i in range(1, len(dbm.layers)-1):
-            upper = dbm.layers[i+1]
-            lower = dbm.layers[i]
-            energies[i] = np.dot( np.dot(bits[0:2**lower, 0:lower], dbm.params.weights[i]), bits[0:2**upper, 0:upper].T )
-        
-        energy = energies[0][:, :, np.newaxis] + energies[1][np.newaxis, :, :]
-        energy_exp = np.exp(energy - np.max(energy, axis=(1,2), keepdims=True))
-        probability = energy_exp / np.sum(energy_exp, axis=(1,2), keepdims=True)
+        probability = dbm.probability(data)
 
         lbits = [bits[0:2**dbm.layers[i], 0:dbm.layers[i]] for i in range(1, len(dbm.layers))]
 
