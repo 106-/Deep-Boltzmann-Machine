@@ -59,7 +59,10 @@ class DBM:
             logging.debug("Calculating Kullback-Leibler Divergence.")
             kld = self.kl_divergence(gen_dbm)
             learning_result.make_log(ec.update_to_epoch(update_time, force_integer=False), "kl-divergence", [kld])
-            logging.info("[ {} / {} ]( {} / {} ) KL-Divergence: {}".format(ec.update_to_epoch(update_time, force_integer=False), ec.train_epoch, update_time, ec.train_update , kld))
+            logging.debug("Calculating Log-Likelihood function.")
+            ll = self.log_likelihood(data.data)
+            learning_result.make_log(ec.update_to_epoch(update_time, force_integer=False), "log-likelihood", [ll])
+            logging.info("[ {} / {} ]( {} / {} ) KL-Divergence: {}, log-likelihood: {}".format(ec.update_to_epoch(update_time, force_integer=False), ec.train_epoch, update_time, ec.train_update , kld, ll))
 
         per_epoch(0)
         for i in range(1, ec.train_update+1):
@@ -73,9 +76,9 @@ class DBM:
     
     # !!! exponential runnning time !!!
     # returns *all* patterns of P(v, h1, h2)
-    def probability(self):
+    def probability(self, data=None):
         if len(self.layers) != 3:
-            raise TypeError("exact method only supports 3-layer DBM.")
+            raise TypeError("probability method only supports 3-layer DBM.")
 
         energies = [None for i in range(len(self.params.weights))]
         bits = get_bits(np.max(self.layers))
@@ -85,12 +88,21 @@ class DBM:
             lower = self.layers[i]
             energies[i] = np.dot( np.dot(bits[0:2**lower, 0:lower], self.params.weights[i]), bits[0:2**upper, 0:upper].T )
         
+        if not data is None:
+            energies[0] = np.dot( np.dot(data, self.params.weights[0]), bits[0:2**self.layers[1], 0:self.layers[1]].T )
+        
         energy = energies[0][:, :, np.newaxis] + energies[1][np.newaxis, :, :]
         energy_exp = np.exp(energy - np.max(energy))
         probability = energy_exp / np.sum(energy_exp)
         
         return probability
     
+    # !!! exponential running time !!!
+    def log_likelihood(self, data):
+        # ln P(v)
+        logprobs = np.log( np.sum(self.probability(data=data), axis=(1,2))  )
+        return np.mean(logprobs)
+
     # !!! exponential runnning time !!!
     def kl_divergence(self, gen_dbm):
         probs = np.sum(self.probability(), axis=(1,2))
