@@ -1,0 +1,58 @@
+{
+    "rcParams": {
+        "font.family": "IPAPGothic",
+        "font.size": 20
+    },
+    "subplots_args": {
+        "nrows": 1,
+        "ncols": 2,
+        "figsize": [8, 8]
+    },
+    "subplots_adjust_args": {
+        "wspace": 0.3
+    },
+    "plots":[
+        {
+            "title": "学習回数に対するKLDの推移",
+            "column": "kl-divergence",
+            "xlabel": "epoch",
+            "ylabel": "KLD",
+            "default_style": {
+                "linewidth": 4.0
+            },
+            "legend_args": {
+                "fontsize": 20
+            }
+        },
+        {
+            "title": "学習回数に対する対数尤度関数の推移",
+            "column": "log-likelihood",
+            "xlabel": "epoch",
+            "ylabel": "log-likelihood",
+            "default_style": {
+                "linewidth": 4.0
+            },
+            "legend_args": {
+                "fontsize": 20
+            }
+        }
+    ],
+    "data-types":[
+        {
+            "name":"meanfield + montecarlo",
+            "typename": "meanfield_montecarlo",
+            "filename_includes": "conventional",
+            "style":{
+                "linestyle": "solid"
+            }
+        },
+        {
+            "name":"S-MCI",
+            "typename": "smci",
+            "filename_includes": "smci",
+            "style":{
+                "linestyle": "dashed"
+            }
+        }
+    ]
+}
