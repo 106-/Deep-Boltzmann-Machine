@@ -13,3 +13,6 @@ def get_bits(num_bits):
     to_and = 2**np.arange(num_bits).reshape(1, num_bits)
     bit_bools = (x & to_and).astype(bool)
     return np.where(bit_bools, 1, -1)
+
+def tantan(x, y, w):
+    return np.tanh( np.arctanh( np.tanh(x)*np.tanh(y) ) + w)

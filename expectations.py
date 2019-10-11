@@ -2,7 +2,7 @@
 
 import numpy as np
 from DBM import DBM_params
-from marginal_functions import sigmoid, act, get_bits
+from marginal_functions import sigmoid, act, get_bits, tantan
 
 class data_expectations:
     old_means = None
@@ -58,20 +58,32 @@ class data_expectations:
 
     @classmethod
     def smci(cls, dbm, data):
+        if len(dbm.layers) != 3:
+            raise TypeError("smci method only supports 3-layer DBM.")
         values = cls._sampling(dbm, data, update_time=1000)
-        
-        means = [None for r in dbm.layers[1:]]
-        means[0] = np.tanh( np.dot(data, dbm.params.weights[0]) + np.dot(values[1], dbm.params.weights[1].T) )
-        for i in range(1, len(dbm.layers)-2):
-            means[i] = np.tanh( np.dot(values[i-1], dbm.params.weights[i-1] ) + np.dot(values[i+1], dbm.params.weights[i+1].T) )
-        means[-1] = np.tanh( np.dot(values[-2], dbm.params.weights[-1]) )
+        expectations = [None for i in range(len(dbm.params.weights))]
 
-        expectations = [None for i in dbm.params.weights]
-        for e,_ in enumerate(expectations):
-            if e==0:
-                expectations[e] = np.dot(data.T, means[e]) / len(data)
-            else:
-                expectations[e] = np.dot(means[e-1].T, means[e]) / len(data)
+        # insane
+        tantan = lambda x,y,w: np.tanh( np.arctanh( np.tanh(x)*np.tanh(y) ) + w)
+
+        # dot(h1, w[0]) - h1 * w[0]
+        under = (np.dot(values[0], dbm.params.weights[0].T)[:, :, np.newaxis] 
+                    - values[0][:, np.newaxis, :] * dbm.params.weights[0][np.newaxis, :, :])
+        # dot(data, w[0]) - data * w[0] + dot(h2, w[1])
+        upper = (np.dot(data, dbm.params.weights[0])[:, np.newaxis, :] 
+                    - data[:, :, np.newaxis] * dbm.params.weights[0][np.newaxis, :, :]
+                    + np.dot(values[1], dbm.params.weights[1].T)[:, np.newaxis, :] )
+        expectations[0] = np.mean(tantan(under, upper, dbm.params.weights[0]), axis=0)
+
+        # dot(h1, w[1]) - h1 * w[1]
+        upper = (np.dot(values[0], dbm.params.weights[1])[:, np.newaxis, :] 
+                    - values[0][:, :, np.newaxis] * dbm.params.weights[1][np.newaxis, :, :])
+        # dot(h2, w[1]) - h2 * w[1] + dot(data, w[0])
+        under = (np.dot(values[1], dbm.params.weights[1].T)[:, :, np.newaxis] 
+                    - values[1][:, np.newaxis, :] * dbm.params.weights[1][np.newaxis, :, :]
+                    + np.dot(data, dbm.params.weights[0])[:, :, np.newaxis] )
+        expectations[1] = np.mean(tantan(upper, under, dbm.params.weights[1]), axis=0)
+
         return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires huge memory !!!
@@ -135,17 +147,31 @@ class model_expectations:
     
     @classmethod
     def smci(cls, dbm, update_time=1000, sample_num=1000):
+        if len(dbm.layers) != 3:
+            raise TypeError("smci method only supports 3-layer DBM.")
         values = cls._sampling(dbm, update_time, sample_num)
-        
-        means = [None for r in dbm.layers]
-        means[0] = np.tanh( np.dot(values[1], dbm.params.weights[0].T) )
-        for i in range(1, len(dbm.layers)-1):
-            means[i] = np.tanh( np.dot(values[i-1], dbm.params.weights[i-1] ) + np.dot(values[i+1], dbm.params.weights[i].T) )
-        means[-1] = np.tanh( np.dot(values[-2], dbm.params.weights[-1]) )
+        expectations = [None for i in range(len(dbm.params.weights))]
 
-        expectations = [None for i in dbm.params.weights]
-        for e,_ in enumerate(expectations):
-            expectations[e] = np.dot(means[e].T, means[e+1]) / sample_num
+        tantan = lambda x,y,w: np.tanh( np.arctanh( np.tanh(x)*np.tanh(y) ) + w)
+
+        # dot(h1, w[0]) - h1 * w[0]
+        under = (np.dot(values[1], dbm.params.weights[0].T)[:, :, np.newaxis] 
+                    - values[1][:, np.newaxis, :] * dbm.params.weights[0][np.newaxis, :, :])
+        # dot(h0, w[0]) - h0 * w[0] + dot(h2, w[1])
+        upper = (np.dot(values[0], dbm.params.weights[0])[:, np.newaxis, :] 
+                    - values[0][:, :, np.newaxis] * dbm.params.weights[0][np.newaxis, :, :]
+                    + np.dot(values[2], dbm.params.weights[1].T)[:, np.newaxis, :] )
+        expectations[0] = np.mean(tantan(under, upper, dbm.params.weights[0]), axis=0)
+
+        # dot(h1, w[1]) - h1 * w[1]
+        upper = (np.dot(values[1], dbm.params.weights[1])[:, np.newaxis, :] 
+                    - values[1][:, :, np.newaxis] * dbm.params.weights[1][np.newaxis, :, :])
+        # dot(h2, w[1]) - h2 * w[1] + dot(h0, w[0])
+        under = (np.dot(values[2], dbm.params.weights[1].T)[:, :, np.newaxis] 
+                    - values[2][:, np.newaxis, :] * dbm.params.weights[1][np.newaxis, :, :]
+                    + np.dot(values[0], dbm.params.weights[0])[:, :, np.newaxis] )
+        expectations[1] = np.mean(tantan(upper, under, dbm.params.weights[1]), axis=0) 
+
         return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires HUGE memory !!!
