@@ -92,8 +92,15 @@ class DBM:
             energies[0] = np.dot( np.dot(data, self.params.weights[0]), bits[0:2**self.layers[1], 0:self.layers[1]].T )
         
         energy = energies[0][:, :, np.newaxis] + energies[1][np.newaxis, :, :]
-        energy_exp = np.exp(energy - np.max(energy))
-        probability = energy_exp / np.sum(energy_exp)
+        
+        if not data is None:
+            # normalization excluding visible layer.
+            energy_exp = np.exp(energy - np.max(energy, axis=(1,2), keepdims=True))
+            probability = energy_exp / np.sum(energy_exp, axis=(1,2), keepdims=True)
+        
+        else:
+            energy_exp = np.exp(energy - np.max(energy))
+            probability = energy_exp / np.sum(energy_exp)
         
         return probability
     
