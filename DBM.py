@@ -76,7 +76,7 @@ class DBM:
     
     # !!! exponential runnning time !!!
     # returns *all* patterns of P(v, h1, h2)
-    def probability(self, data=None):
+    def probability(self, data=None, data_is_conditional=False):
         if len(self.layers) != 3:
             raise TypeError("probability method only supports 3-layer DBM.")
 
@@ -88,19 +88,24 @@ class DBM:
             lower = self.layers[i]
             energies[i] = np.dot( np.dot(bits[0:2**lower, 0:lower], self.params.weights[i]), bits[0:2**upper, 0:upper].T )
         
-        if not data is None:
-            energies[0] = np.dot( np.dot(data, self.params.weights[0]), bits[0:2**self.layers[1], 0:self.layers[1]].T )
-        
         energy = energies[0][:, :, np.newaxis] + energies[1][np.newaxis, :, :]
-        
-        if not data is None:
-            # normalization excluding visible layer.
-            energy_exp = np.exp(energy - np.max(energy, axis=(1,2), keepdims=True))
-            probability = energy_exp / np.sum(energy_exp, axis=(1,2), keepdims=True)
-        
+        energy_max = np.max(energy)
+        energy_exp = np.exp(energy - energy_max)
+        state_sum = np.sum(energy_exp)
+
+        if not data is None: 
+            energies[0] = np.dot( np.dot(data, self.params.weights[0]), bits[0:2**self.layers[1], 0:self.layers[1]].T )
+            energy = energies[0][:, :, np.newaxis] + energies[1][np.newaxis, :, :]
+            if data_is_conditional:
+                # normalization without visible layer.
+                energy_exp = np.exp(energy - np.max(energy, axis=(1,2), keepdims=True))
+                probability = energy_exp / np.sum(energy_exp, axis=(1,2), keepdims=True)
+            else:
+                energy_exp = np.exp(energy - energy_max)
+                probability = energy_exp / state_sum
+
         else:
-            energy_exp = np.exp(energy - np.max(energy))
-            probability = energy_exp / np.sum(energy_exp)
+            probability = energy_exp / state_sum
         
         return probability
     
@@ -108,6 +113,7 @@ class DBM:
     def log_likelihood(self, data):
         # ln P(v)
         logprobs = np.log( np.sum(self.probability(data=data), axis=(1,2))  )
+        logging.debug( np.sum(self.probability(data=data), axis=(1,2))  )
         return np.mean(logprobs)
 
     # !!! exponential runnning time !!!

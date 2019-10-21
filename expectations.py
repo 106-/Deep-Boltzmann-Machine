@@ -95,7 +95,7 @@ class data_expectations:
         expectations = [np.zeros((i,j)) for i,j in dbm.layers_matrix_sizes]
         bits = get_bits(np.max(dbm.layers))
 
-        probability = dbm.probability(data)
+        probability = dbm.probability(data, True)
 
         lbits = [bits[0:2**dbm.layers[i], 0:dbm.layers[i]] for i in range(1, len(dbm.layers))]
 
