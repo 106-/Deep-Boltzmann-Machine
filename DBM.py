@@ -10,7 +10,7 @@ from marginal_functions import get_bits
 from numpy.lib.stride_tricks import as_strided
 
 class DBM_params(Parameter):
-    def __init__(self, layers, initial_params=None):
+    def __init__(self, layers, initial_params=None, gauss=False):
         self.layers = np.array(layers)
         # [1, 2, 3, 4] -> [[1, 2], [2, 3], [3, 4]]
         self.layers_matrix_sizes = as_strided(self.layers, (len(self.layers)-1, 2), (self.layers.strides[0], self.layers.strides[0]))
@@ -18,9 +18,14 @@ class DBM_params(Parameter):
         if initial_params is None:
             self.weights = []
             for i, j in self.layers_matrix_sizes:
-                # xavier's initialization
-                uniform_range = np.sqrt(6/(i+j))
-                self.weights.append(np.random.uniform(-uniform_range, uniform_range, (i, j)))
+                if gauss:
+                    sigma = np.sqrt( 1.0/(i+j) )
+                    self.weights.append( np.random.normal(0, sigma, (i,j)) )
+                else:
+                    # xavier's initialization
+                    uniform_range = np.sqrt(6/(i+j))
+                    self.weights.append(np.random.uniform(-uniform_range, uniform_range, (i, j)))
+                
         elif isinstance(initial_params, dict):
             self.weights = [initial_params[i] for i in sorted(initial_params)]
         elif isinstance(initial_params, list):
