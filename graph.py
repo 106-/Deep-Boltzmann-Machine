@@ -12,7 +12,11 @@ def main():
 
     settings = json.load(open(args.setting_file, "r"))
     logset = LogSet(args.datasource, settings)
-    logset.summary().plot(settings)
+    if logset.data["summary"]:
+        logset.plot(settings)
+    else:
+        summary = logset.summary()
+        summary.plot(settings)
 
 if __name__=='__main__':
     main()
