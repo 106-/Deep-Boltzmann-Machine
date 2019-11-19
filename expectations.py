@@ -63,17 +63,9 @@ class data_expectations:
         values = cls._sampling(dbm, data, update_time=1000)
         expectations = [None for i in range(len(dbm.params.weights))]
 
-        # insane
-        tantan = lambda x,y,w: np.tanh( np.arctanh( np.tanh(x)*np.tanh(y) ) + w)
-
-        # dot(h1, w[0]) - h1 * w[0]
-        under = (np.dot(values[0], dbm.params.weights[0].T)[:, :, np.newaxis] 
-                    - values[0][:, np.newaxis, :] * dbm.params.weights[0][np.newaxis, :, :])
-        # dot(data, w[0]) - data * w[0] + dot(h2, w[1])
-        upper = (np.dot(data, dbm.params.weights[0])[:, np.newaxis, :] 
-                    - data[:, :, np.newaxis] * dbm.params.weights[0][np.newaxis, :, :]
-                    + np.dot(values[1], dbm.params.weights[1].T)[:, np.newaxis, :] )
-        expectations[0] = np.mean(tantan(under, upper, dbm.params.weights[0]), axis=0)
+        node_exp = np.tanh( np.dot(data, dbm.params.weights[0]) + np.dot( values[1], dbm.params.weights[1].T) )
+        upper = data[:, :, np.newaxis] * node_exp[:, np.newaxis, :]
+        expectations[0] = np.mean(upper, axis=0)
 
         # dot(h1, w[1]) - h1 * w[1]
         upper = (np.dot(values[0], dbm.params.weights[1])[:, np.newaxis, :] 
@@ -151,8 +143,6 @@ class model_expectations:
             raise TypeError("smci method only supports 3-layer DBM.")
         values = cls._sampling(dbm, update_time, sample_num)
         expectations = [None for i in range(len(dbm.params.weights))]
-
-        tantan = lambda x,y,w: np.tanh( np.arctanh( np.tanh(x)*np.tanh(y) ) + w)
 
         # dot(h1, w[0]) - h1 * w[0]
         under = (np.dot(values[1], dbm.params.weights[0].T)[:, :, np.newaxis] 

@@ -41,15 +41,23 @@
         {
             "name":"meanfield + montecarlo",
             "typename": "meanfield_montecarlo",
-            "filename_includes": "conventional",
+            "filename_includes": "meanfield_montecarlo",
             "style":{
                 "linestyle": "solid"
             }
         },
         {
-            "name":"S-MCI",
-            "typename": "smci",
-            "filename_includes": "smci",
+            "name":"meanfield + smci",
+            "typename": "meanfield_smci",
+            "filename_includes": "meanfield_smci",
+            "style":{
+                "linestyle": "solid"
+            }
+        },
+        {
+            "name":"smci + smci",
+            "typename": "smci_smci",
+            "filename_includes": "smci_smci",
             "style":{
                 "linestyle": "dashed"
             }
