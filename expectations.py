@@ -103,7 +103,6 @@ class data_expectations:
         for e,_ in enumerate(expectations):
             expectations[e] /= len(data)
 
-        logging.debug(expectations)
         return DBM_params(dbm.layers, initial_params=(expectations))
 
 class model_expectations:
