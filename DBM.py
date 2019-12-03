@@ -118,7 +118,6 @@ class DBM:
     def log_likelihood(self, data):
         # ln P(v)
         logprobs = np.log( np.sum(self.probability(data=data), axis=(1,2))  )
-        logging.debug( np.sum(self.probability(data=data), axis=(1,2))  )
         return np.mean(logprobs)
 
     # !!! exponential runnning time !!!
