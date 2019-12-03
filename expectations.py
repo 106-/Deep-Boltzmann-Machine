@@ -40,7 +40,7 @@ class data_expectations:
             means = [np.random.randn(data.shape[0],r) for r in dbm.layers[1:]]
         else:
             means = cls.old_means
-        expectations = [None for i in range(len(dbm.params.weights))]
+        expectations = [None for i in dbm.params.weights]
         for t in range(approximition_time):
             # (N, i)(i, j) + (N, k)(j, k)^T
             means[0] = np.tanh( np.dot(data, dbm.params.weights[0]) + np.dot(means[1], dbm.params.weights[1].T) )
@@ -61,7 +61,7 @@ class data_expectations:
         if len(dbm.layers) != 3:
             raise TypeError("smci method only supports 3-layer DBM.")
         values = cls._sampling(dbm, data, update_time=1000)
-        expectations = [None for i in range(len(dbm.params.weights))]
+        expectations = [None for i in dbm.params.weights]
 
         node_exp = np.tanh( np.dot(data, dbm.params.weights[0]) + np.dot( values[1], dbm.params.weights[1].T) )
         upper = data[:, :, np.newaxis] * node_exp[:, np.newaxis, :]
@@ -84,22 +84,26 @@ class data_expectations:
         if len(dbm.layers) != 3:
             raise TypeError("exact method only supports 3-layer DBM.")
 
-        expectations = [np.zeros((i,j)) for i,j in dbm.layers_matrix_sizes]
+        expectations = [None for i in dbm.params.weights]
         bits = get_bits(np.max(dbm.layers))
-
         probability = dbm.probability(data, True)
 
+        # lbits: [(2**j, j), (2**k, k)]
         lbits = [bits[0:2**dbm.layers[i], 0:dbm.layers[i]] for i in range(1, len(dbm.layers))]
 
-        for d in range(len(data)):
-            for h1 in range(2**dbm.layers[1]):
-                for h2 in range(2**dbm.layers[2]):
-                    np.add(expectations[0], np.outer(data[d], lbits[0][h1]) * probability[d][h1][h2], out=expectations[0])
-                    np.add(expectations[1], np.outer(lbits[0][h1], lbits[1][h2]) * probability[d][h1][h2], out=expectations[1])
+        # (N, 2**j, 2**k, i, j) -> (i, j)
+        expectations[0] = np.sum(data[:, np.newaxis, np.newaxis, :, np.newaxis]
+                            * lbits[0][np.newaxis, :, np.newaxis, np.newaxis, :]
+                            * probability[:, :, :, np.newaxis, np.newaxis], axis=(0,1,2))
+        # (N, 2**j, 2**k, j, k) -> (j, k)
+        expectations[1] = np.sum(lbits[0][np.newaxis, :, np.newaxis, :, np.newaxis]
+                            * lbits[1][np.newaxis, np.newaxis, :, np.newaxis, :]
+                            * probability[:, :, :, np.newaxis, np.newaxis], axis=(0,1,2))
 
         for e,_ in enumerate(expectations):
             expectations[e] /= len(data)
 
+        logging.debug(expectations)
         return DBM_params(dbm.layers, initial_params=(expectations))
 
 class model_expectations:
@@ -132,7 +136,7 @@ class model_expectations:
     @classmethod
     def montecarlo(cls, dbm, update_time=1000, sample_num=1000):
         values = cls._sampling(dbm, update_time, sample_num)
-        expectations = [None for i in range(len(dbm.params.weights))]
+        expectations = [None for i in dbm.params.weights]
         for e,_ in enumerate(expectations):
             expectations[e] = np.dot(values[e].T, values[e+1]) / sample_num
         return DBM_params(dbm.layers, initial_params=(expectations))
@@ -142,7 +146,7 @@ class model_expectations:
         if len(dbm.layers) != 3:
             raise TypeError("smci method only supports 3-layer DBM.")
         values = cls._sampling(dbm, update_time, sample_num)
-        expectations = [None for i in range(len(dbm.params.weights))]
+        expectations = [None for i in dbm.params.weights]
 
         # dot(h1, w[0]) - h1 * w[0]
         under = (np.dot(values[1], dbm.params.weights[0].T)[:, :, np.newaxis] 
@@ -170,15 +174,19 @@ class model_expectations:
         if len(dbm.layers) != 3:
             raise TypeError("exact method only supports 3-layer DBM.")
 
-        expectations = [np.zeros((i,j)) for i,j in dbm.layers_matrix_sizes]
+        expectations = [None for i in dbm.params.weights]
         bits = get_bits(np.max(dbm.layers))
         probability = dbm.probability()
 
+        # lbits: [(2**i, i), (2**j, j), (2**k, k)]
         lbits = [bits[0:2**dbm.layers[i], 0:dbm.layers[i]] for i in range(len(dbm.layers))]
-        for v in range(2**dbm.layers[0]):
-            for h1 in range(2**dbm.layers[1]):
-                for h2 in range(2**dbm.layers[2]):
-                    np.add(expectations[0], np.outer(lbits[0][v], lbits[1][h1]) * probability[v][h1][h2], out=expectations[0])
-                    np.add(expectations[1], np.outer(lbits[1][h1], lbits[2][h2]) * probability[v][h1][h2], out=expectations[1])
+        # (2**i, 2**j, 2**k, i, j) -> (i, j)
+        expectations[0] = np.sum(lbits[0][:, np.newaxis, np.newaxis, :, np.newaxis]
+                            * lbits[1][np.newaxis, :, np.newaxis, np.newaxis, :]
+                            * probability[:, :, :, np.newaxis, np.newaxis], axis=(0, 1, 2))
+        # (2**i, 2**j, 2**k, j, k) -> (j, k)
+        expectations[1] = np.sum(lbits[1][np.newaxis, :, np.newaxis, :, np.newaxis]
+                            * lbits[2][np.newaxis, np.newaxis, :, np.newaxis, :]
+                            * probability[:, :, :, np.newaxis, np.newaxis], axis=(0, 1, 2))
 
         return DBM_params(dbm.layers, initial_params=(expectations))
