@@ -19,7 +19,7 @@ class data_expectations:
             update_time = 1
 
         for i in range(update_time):
-
+            # 往路
             act_prob = act( np.dot(data, dbm.params.weights[0]) + np.dot(dbm.params.weights[1], values[1].T).T )
             values[0] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[1]), 1, -1)
 
@@ -29,6 +29,14 @@ class data_expectations:
 
             act_prob = act( np.dot( values[-2], dbm.params.weights[-1] ) )
             values[-1] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[-1]), 1, -1)
+
+            # 復路
+            for l in reversed(range(1, len(dbm.layers)-2)):
+                act_prob = act( np.dot( values[l-1], dbm.params.weights[l] ) + np.dot(dbm.params.weights[l+1], values[l+1].T).T )
+                values[l] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[l+1]), 1, -1)
+
+            act_prob = act( np.dot(data, dbm.params.weights[0]) + np.dot(dbm.params.weights[1], values[1].T).T )
+            values[0] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[1]), 1, -1)
 
         cls.old_samples = values
         return values
@@ -47,6 +55,10 @@ class data_expectations:
             for i in range(1, len(dbm.layers)-2):
                 means[i] = np.tanh( np.dot(means[i-1], dbm.params.weights[i] ) + np.dot(means[i+1], dbm.params.weights[i+1].T) )
             means[-1] = np.tanh( np.dot(means[-2], dbm.params.weights[-1]) )
+
+            for i in reversed(range(1, len(dbm.layers)-2)):
+                means[i] = np.tanh( np.dot(means[i-1], dbm.params.weights[i] ) + np.dot(means[i+1], dbm.params.weights[i+1].T) )
+            means[0] = np.tanh( np.dot(data, dbm.params.weights[0]) + np.dot(means[1], dbm.params.weights[1].T) )
         cls.old_means = means
 
         for e in range(len(expectations)):
@@ -118,7 +130,7 @@ class model_expectations:
             update_time = 1
 
         for i in range(update_time):
-
+            # 往路
             act_prob = act( np.dot(dbm.params.weights[0], values[1].T).T )
             values[0] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[0]), 1, -1)
 
@@ -128,6 +140,14 @@ class model_expectations:
 
             act_prob = act( np.dot( values[-2], dbm.params.weights[-1] ) )
             values[-1] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[-1]), 1, -1)
+
+            # 復路
+            for l in reversed(range(1, len(dbm.layers)-1)):
+                act_prob = act( np.dot( values[l-1], dbm.params.weights[l-1] ) + np.dot(dbm.params.weights[l], values[l+1].T).T )
+                values[l] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[l]), 1, -1)
+
+            act_prob = act( np.dot(dbm.params.weights[0], values[1].T).T )
+            values[0] = np.where(act_prob > np.random.rand(sample_num, dbm.layers[0]), 1, -1)
 
         cls.old_samples = values
         return values
