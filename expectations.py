@@ -42,8 +42,8 @@ class data_expectations:
         return values
 
     @classmethod
-    def mean_field(cls, dbm, data, approximition_time=100):
-        data_length = len(data)
+    def mean_field(cls, dbm, data, data_idx, approximition_time=100):
+        data_length = len(data_idx)
         if cls.old_means is None:
             means = [np.random.randn(data.shape[0],r) for r in dbm.layers[1:]]
         else:
@@ -63,48 +63,52 @@ class data_expectations:
 
         for e in range(len(expectations)):
             if e==0:
-                expectations[e] = np.dot(data.T, means[e]) / data_length
+                expectations[e] = np.dot(data[data_idx].T, means[e][data_idx]) / data_length
             else:
-                expectations[e] = np.dot(means[e-1].T, means[e]) / data_length
+                expectations[e] = np.dot(means[e-1][data_idx].T, means[e][data_idx]) / data_length
         return DBM_params(dbm.layers, initial_params=(expectations))
 
     @classmethod
-    def smci(cls, dbm, data):
+    def smci(cls, dbm, data, data_idx):
         if len(dbm.layers) != 3:
             raise TypeError("smci method only supports 3-layer DBM.")
         values = cls._sampling(dbm, data, update_time=1000)
+
+        mdata = data[data_idx]
+        mvalues = [v[data_idx] for v in values]
+
         expectations = [None for i in dbm.params.weights]
 
-        node_exp = np.tanh( np.dot(data, dbm.params.weights[0]) + np.dot( values[1], dbm.params.weights[1].T) )
-        upper = data[:, :, np.newaxis] * node_exp[:, np.newaxis, :]
+        node_exp = np.tanh( np.dot(mdata, dbm.params.weights[0]) + np.dot( mvalues[1], dbm.params.weights[1].T) )
+        upper = mdata[:, :, np.newaxis] * node_exp[:, np.newaxis, :]
         expectations[0] = np.mean(upper, axis=0)
 
         # dot(h1, w[1]) - h1 * w[1]
-        upper = (np.dot(values[0], dbm.params.weights[1])[:, np.newaxis, :] 
-                    - values[0][:, :, np.newaxis] * dbm.params.weights[1][np.newaxis, :, :])
+        upper = (np.dot(mvalues[0], dbm.params.weights[1])[:, np.newaxis, :] 
+                    - mvalues[0][:, :, np.newaxis] * dbm.params.weights[1][np.newaxis, :, :])
         # dot(h2, w[1]) - h2 * w[1] + dot(data, w[0])
-        under = (np.dot(values[1], dbm.params.weights[1].T)[:, :, np.newaxis] 
-                    - values[1][:, np.newaxis, :] * dbm.params.weights[1][np.newaxis, :, :]
-                    + np.dot(data, dbm.params.weights[0])[:, :, np.newaxis] )
+        under = (np.dot(mvalues[1], dbm.params.weights[1].T)[:, :, np.newaxis] 
+                    - mvalues[1][:, np.newaxis, :] * dbm.params.weights[1][np.newaxis, :, :]
+                    + np.dot(mdata, dbm.params.weights[0])[:, :, np.newaxis] )
         expectations[1] = np.mean(tantan(upper, under, dbm.params.weights[1]), axis=0)
 
         return DBM_params(dbm.layers, initial_params=(expectations))
 
     # !!! this function takes exponential running time and requires huge memory !!!
     @classmethod
-    def exact(cls, dbm, data):
+    def exact(cls, dbm, data, data_idx):
         if len(dbm.layers) != 3:
             raise TypeError("exact method only supports 3-layer DBM.")
-
+        mdata = data[data_idx]
         expectations = [None for i in dbm.params.weights]
         bits = get_bits(np.max(dbm.layers))
-        probability = dbm.probability(data, True)
+        probability = dbm.probability(mdata, True)
 
         # lbits: [(2**j, j), (2**k, k)]
         lbits = [bits[0:2**dbm.layers[i], 0:dbm.layers[i]] for i in range(1, len(dbm.layers))]
 
         # (N, 2**j, 2**k, i, j) -> (i, j)
-        expectations[0] = np.sum(data[:, np.newaxis, np.newaxis, :, np.newaxis]
+        expectations[0] = np.sum(mdata[:, np.newaxis, np.newaxis, :, np.newaxis]
                             * lbits[0][np.newaxis, :, np.newaxis, np.newaxis, :]
                             * probability[:, :, :, np.newaxis, np.newaxis], axis=(0,1,2))
         # (N, 2**j, 2**k, j, k) -> (j, k)
@@ -113,7 +117,7 @@ class data_expectations:
                             * probability[:, :, :, np.newaxis, np.newaxis], axis=(0,1,2))
 
         for e,_ in enumerate(expectations):
-            expectations[e] /= len(data)
+            expectations[e] /= len(mdata)
 
         return DBM_params(dbm.layers, initial_params=(expectations))
 

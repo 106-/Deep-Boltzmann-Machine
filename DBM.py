@@ -72,7 +72,8 @@ class DBM:
         per_epoch(0)
         for i in range(1, ec.train_update+1):
             logging.debug("training process : [ %d / %d ]" % (i, ec.train_update))
-            data_exp = self.data_expectation(self, data.minibatch(minibatch_size))
+            _, minibatch_idx = data.minibatch(minibatch_size, return_idx=True)
+            data_exp = self.data_expectation(self, data.data, minibatch_idx)
             model_exp = self.model_expectation(self)
             diff = optimizer.update( data_exp - model_exp )
             self.params += diff
