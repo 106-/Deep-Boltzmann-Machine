@@ -5,12 +5,12 @@ import logging
 import json
 from mltools import Parameter
 from mltools import EpochCalc
-from marginal_functions import get_bits
+from marginal_functions import get_bits, act
 
 from numpy.lib.stride_tricks import as_strided
 
 class DBM_params(Parameter):
-    def __init__(self, layers, initial_params=None, gauss=False):
+    def __init__(self, layers, initial_params=None, gauss=False, gauss_param=1.0):
         self.layers = np.array(layers)
         # [1, 2, 3, 4] -> [[1, 2], [2, 3], [3, 4]]
         self.layers_matrix_sizes = as_strided(self.layers, (len(self.layers)-1, 2), (self.layers.strides[0], self.layers.strides[0]))
@@ -19,7 +19,7 @@ class DBM_params(Parameter):
             self.weights = []
             for i, j in self.layers_matrix_sizes:
                 if gauss:
-                    sigma = np.sqrt( 1.0/(i+j) )
+                    sigma = np.sqrt( gauss_param/(i+j) )
                     self.weights.append( np.random.normal(0, sigma, (i,j)) )
                 else:
                     # xavier's initialization
@@ -47,8 +47,8 @@ class DBM_params(Parameter):
         return DBM_params(self.layers, initial_params=zero_params)
 
 class DBM:
-    def __init__(self, layers, data_expectation="mean_field", model_expectation="montecarlo", initial_params=None):
-        self.params = DBM_params(layers, initial_params)
+    def __init__(self, layers, data_expectation="mean_field", model_expectation="montecarlo", param_args={}):
+        self.params = DBM_params(layers, **param_args)
         self.layers = self.params.layers
         self.layers_matrix_sizes = self.params.layers_matrix_sizes
 
@@ -127,6 +127,29 @@ class DBM:
         gen_probs = np.sum(gen_dbm.probability(), axis=(1,2))
         return np.sum( gen_probs * np.log( gen_probs / probs ) )
     
+    def sampling(self, sampling_num=500, update_time=1000):
+        values = [np.random.choice([-1, 1], (sampling_num, i)) for i in self.layers]
+        
+        for i in range(update_time):
+            act_prob = act( np.dot(self.params.weights[0], values[1].T).T )
+            values[0] = np.where(act_prob > np.random.rand(sampling_num, self.layers[0]), 1, -1)
+
+            for l in range(1, len(self.layers)-1):
+                act_prob = act( np.dot( values[l-1], self.params.weights[l-1] ) + np.dot(self.params.weights[l], values[l+1].T).T )
+                values[l] = np.where(act_prob > np.random.rand(sampling_num, self.layers[l]), 1, -1)
+
+            act_prob = act( np.dot( values[-2], self.params.weights[-1] ) )
+            values[-1] = np.where(act_prob > np.random.rand(sampling_num, self.layers[-1]), 1, -1)
+
+            for l in reversed(range(1, len(self.layers)-1)):
+                act_prob = act( np.dot( values[l-1], self.params.weights[l-1] ) + np.dot(self.params.weights[l], values[l+1].T).T )
+                values[l] = np.where(act_prob > np.random.rand(sampling_num, self.layers[l]), 1, -1)
+
+            act_prob = act( np.dot(self.params.weights[0], values[1].T).T )
+            values[0] = np.where(act_prob > np.random.rand(sampling_num, self.layers[0]), 1, -1)
+
+        return values[0]
+
     def save(self, filename):
         params_listed = {}
         for w in self.params.params:
@@ -142,4 +165,4 @@ class DBM:
         data = json.load(open(filename, "r"))
         for w in data["params"]:
             data["params"][w] = np.array(data["params"][w])
-        return DBM(data["layers"], data_expectation, model_expectation, initial_params=data["params"])
+        return DBM(data["layers"], data_expectation, model_expectation, param_args={"initial_params":data["params"]})

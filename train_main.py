@@ -28,13 +28,11 @@ def main():
     config = json.load(open(args.learning_config, "r"))
 
     logging.debug("Loading Initial/Generative models.")
-    dbm = DBM.load(config["initial_model"], config["data_expectation"], config["model_expectation"])
-    gen_dbm = DBM.load(config["generative_model"])
+    dbm = DBM(config["layers"], **config["initial_model_args"])
+    gen_dbm = DBM(config["layers"], **config["generative_model_args"])
 
     logging.debug("Loading learning data.")
-    learning_data = Data(np.load(config["learning_data"]))
-    if "data_limit" in config:
-        learning_data = Data(learning_data.data[:config["data_limit"]])
+    learning_data = Data(gen_dbm.sampling(sampling_num=config["data_size"]))
 
     logging.info("Optimizer: %s" % config["optimizer"])
     optimizer = getattr(mltools.optimizer, config["optimizer"])(**config["optimizer_args"])
