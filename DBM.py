@@ -150,6 +150,10 @@ class DBM:
 
         return values[0]
 
+    def spinglass_check(self):
+        s = self.sampling()
+        return np.mean(np.std(self.sampling(),axis=1))
+
     def save(self, filename):
         params_listed = {}
         for w in self.params.params:
