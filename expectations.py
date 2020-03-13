@@ -48,6 +48,7 @@ class data_expectations:
             means = [np.random.randn(data.shape[0],r) for r in dbm.layers[1:]]
         else:
             means = cls.old_means
+            approximition_time = 1
         expectations = [None for i in dbm.params.weights]
         for t in range(approximition_time):
             # (N, i)(i, j) + (N, k)(j, k)^T
@@ -157,7 +158,7 @@ class model_expectations:
         return values
 
     @classmethod
-    def montecarlo(cls, dbm, update_time=1000, sample_num=1000):
+    def montecarlo(cls, dbm, update_time=1000, sample_num=500):
         values = cls._sampling(dbm, update_time, sample_num)
         expectations = [None for i in dbm.params.weights]
         for e,_ in enumerate(expectations):
@@ -165,7 +166,7 @@ class model_expectations:
         return DBM_params(dbm.layers, initial_params=(expectations))
     
     @classmethod
-    def smci(cls, dbm, update_time=1000, sample_num=1000):
+    def smci(cls, dbm, update_time=1000, sample_num=500):
         if len(dbm.layers) != 3:
             raise TypeError("smci method only supports 3-layer DBM.")
         values = cls._sampling(dbm, update_time, sample_num)
