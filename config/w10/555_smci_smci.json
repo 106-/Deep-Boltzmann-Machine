@@ -1,0 +1,25 @@
+{
+    "layers": [
+        5,
+        5,
+        5
+    ],
+    "initial_model_args": {
+        "data_expectation": "smci",
+        "model_expectation": "smci",
+        "param_args": {
+            "gauss": false
+        }
+    },
+    "generative_model_args": {
+        "param_args": {
+            "gauss": true,
+            "gauss_param": 10.0
+        }
+    },
+    "test_interval": 1.0,
+    "data_size": 500,
+    "optimizer": "Adamax",
+    "optimizer_args":{},
+    "minibatch_size": 100
+}
